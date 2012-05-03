@@ -74,8 +74,8 @@ while(<$tax_fh>)
     $fields[1] =~ s/"//g;
     
     # remove trailing tax ids
-    $fields[1] =~ s/ .__$//;
-    $fields[1] =~ s/ .__;$//g;
+    $fields[1] =~ s/.__$//;
+    $fields[1] =~ s/.__;$//g;
     
     $global_tax_lookup{$fields[0]} = $fields[1];
 }
