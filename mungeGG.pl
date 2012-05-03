@@ -68,7 +68,7 @@ my $tax_fh = openRead($global_options->{'taxonomy'});
 while(<$tax_fh>)
 {
     chomp $_;
-    my @fields = split(/,/, $_);
+    my @fields = split(/\t/, $_);
     
     # remove quotes
     $fields[1] =~ s/"//g;
