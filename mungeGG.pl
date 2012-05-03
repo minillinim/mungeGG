@@ -60,6 +60,7 @@ my $global_options = checkParams();
 # CODE HERE
 ######################################################################
 my %global_tax_lookup = ();
+my %global_tax_dupe_handler = ();
 
 # first load the taxonomy into memory
 my $tax_fh = openRead($global_options->{'taxonomy'});
@@ -75,27 +76,33 @@ while(<$tax_fh>)
     
     # remove trailing tax ids
     $fields[1] =~ s/.__$//;
-    $fields[1] =~ s/.__;$//g;
+    $fields[1] =~ s/.__;//g;
+
+    if(exists $global_tax_dupe_handler{$fields[1]})
+    { $global_tax_dupe_handler{$fields[1]}++; $fields[1] .= "_REPEAT_".$global_tax_dupe_handler{$fields[1]}.";"; }
+    else
+    { $global_tax_dupe_handler{$fields[1]} = 1; }
     
     $global_tax_lookup{$fields[0]} = $fields[1];
 }
 
-# one thread for parsing through the seqio object
+my $out_fh = openWrite($global_options->{'out'});
 my $seqio = Bio::SeqIO->new(-file => $global_options->{'greengenes'}, '-format' => 'Fasta');
 while(my $seq = $seqio->next_seq)
 {
     my $seq_id = $seq->id;
     if(exists $global_tax_lookup{$seq_id})
     {
-        print ">$global_tax_lookup{$seq_id}\n";
+        print $out_fh ">$global_tax_lookup{$seq_id}\n";
     }
     else
     {
-        print ">$seq_id\n";
+        print $out_fh ">$seq_id\n";
     }
-    print $seq->seq."\n";
+    print $out_fh $seq->seq."\n";
 }
 close ($tax_fh);
+close ($out_fh);
 
 ######################################################################
 # CUSTOM SUBS
@@ -111,7 +118,7 @@ sub checkParams {
     #-----
     # Do any and all options checking here...
     #
-    my @standard_options = ( "help|h+", "greengenes|g:s", "taxonomy|t:s");
+    my @standard_options = ( "help|h+", "greengenes|g:s", "taxonomy|t:s", "out|o:s");
     my %options;
 
     # Add any other command line options, and the code to handle them
@@ -129,6 +136,7 @@ sub checkParams {
     # Compulsory items
     if(!exists $options{'greengenes'} ) { printParamError ("Please supply a GG database in fasta format"); }
     if(!exists $options{'taxonomy'} ) { printParamError ("Please supply a taxonomy file"); }
+    if(!exists $options{'out'} ) { printParamError ("Please supply a file to write to"); }
     #if(!exists $options{''} ) { printParamError (""); }
 
     return \%options;
@@ -328,10 +336,11 @@ __DATA__
 
 =head1 SYNOPSIS
 
-    mungeGG.pl -greengenes|g GG_FILE -taxonomy|t TAX_FILE
+    mungeGG.pl -greengenes|g GG_FILE -taxonomy|t TAX_FILE -out|o FILE
 
       -greengenes -g GG_FILE       Greengenes database in fasta format
       -taxonomy -t TAX_FILE        Taxonomy to apply
+      -out -o FILE		   File to write to
       [-help -h]                   Displays basic usage information
          
 =cut
